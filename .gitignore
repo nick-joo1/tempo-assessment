@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+
+# Local state and secrets
+data/
+.env
+.env.*
+!.env.example
+
+# The assignment brief is not part of the submission
+*.pdf
+
+.DS_Store
+*.log
