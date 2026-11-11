@@ -4,6 +4,7 @@ coverage/
 
 # Local state and secrets
 data/
+evals/results/
 .env
 .env.*
 !.env.example
