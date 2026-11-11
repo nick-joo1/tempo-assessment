@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import etag from '@fastify/etag';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
+import serveStatic from '@fastify/static';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
@@ -20,6 +22,8 @@ import type { NarrativeService } from './narrative/service.js';
 import type { PullRequestStore } from './store/pull-requests.js';
 import type { RepoStore } from './store/repos.js';
 import type { SyncService } from './sync/sync-service.js';
+
+const PUBLIC_DIR = fileURLToPath(new URL('../public', import.meta.url));
 
 /** Requests per client address per minute, across all routes. */
 const GLOBAL_RATE_LIMIT = 300;
@@ -123,6 +127,7 @@ export async function buildApp(deps: AppDependencies): Promise<FastifyInstance> 
     await api.register(insightRoutes, deps);
   });
 
+  await app.register(serveStatic, { root: PUBLIC_DIR });
   app.setNotFoundHandler({ preHandler: app.rateLimit() }, (request, reply) =>
     sendProblem(new Problem(404, 'not_found', 'Not found', 'No such resource.'), request, reply),
   );

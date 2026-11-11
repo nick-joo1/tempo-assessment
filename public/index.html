@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Review flow</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="intro">
+        <h1>Review flow</h1>
+        <p>
+          How long pull requests take to merge, where that time goes and who reviews them.
+          <span class="model">Text set like this was written by a language model.</span>
+          Everything else is computed from GitHub data.
+        </p>
+      </div>
+
+      <div class="controls">
+        <label class="field">
+          <span>Repository</span>
+          <select id="repo" disabled></select>
+        </label>
+
+        <fieldset class="field" id="period">
+          <legend>Period</legend>
+          <div class="segmented">
+            <label><input type="radio" name="days" value="7" /><span>7 days</span></label>
+            <label><input type="radio" name="days" value="30" checked /><span>30 days</span></label>
+            <label><input type="radio" name="days" value="90" /><span>90 days</span></label>
+          </div>
+        </fieldset>
+
+        <form id="track" class="track" novalidate>
+          <label class="field">
+            <span>Track another repository</span>
+            <input
+              id="track-name"
+              name="repository"
+              placeholder="owner/name"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+            />
+          </label>
+          <button type="submit">Track repository</button>
+        </form>
+      </div>
+
+      <p id="notice" class="notice" role="status"></p>
+    </header>
+
+    <main id="view" class="view" hidden>
+      <section id="reading" class="reading" aria-label="What the model makes of the numbers"></section>
+      <section id="record" class="record" aria-label="The numbers"></section>
+    </main>
+
+    <footer class="colophon">
+      <a href="/docs">API reference</a>
+      <a href="/openapi.json">OpenAPI document</a>
+    </footer>
+
+    <div id="tip" class="tip" role="tooltip" hidden></div>
+  </body>
+</html>

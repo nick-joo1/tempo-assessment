@@ -1,0 +1,816 @@
+/*
+ * Two voices share the page. What the language model wrote is set in a serif; everything
+ * computed from GitHub data is set in the system sans. Three colours carry meaning in the
+ * figures and nowhere else: orange is waiting, violet is the whole trip from open to merge,
+ * blue is reviewing.
+ */
+:root {
+  color-scheme: light dark;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --rule: #e1e0d9;
+  --axis: #c3c2b7;
+  --wait: #eb6834;
+  --whole: #6250d6;
+  --review: #2a78d6;
+  --quiet: #b0aea5;
+  --cited: #ffe27a;
+  --good: #006300;
+  --bad: #c22f2f;
+  --serif: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --gutter: clamp(16px, 4vw, 56px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --rule: #2c2c2a;
+    --axis: #383835;
+    --wait: #d95926;
+    --whole: #9085e9;
+    --review: #3987e5;
+    --quiet: #5e5d58;
+    --cited: #6b5200;
+    --good: #0ca30c;
+    --bad: #e66767;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  /* biome-ignore lint/complexity/noImportantStyles: the attribute must beat every display rule below */
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 16px / 1.5 var(--sans);
+}
+
+a {
+  color: inherit;
+  text-underline-offset: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.model {
+  font-family: var(--serif);
+}
+
+/* Masthead and controls */
+
+.masthead {
+  padding: 32px var(--gutter) 0;
+}
+
+.intro h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.intro p {
+  max-width: 68ch;
+  margin: 6px 0 0;
+  color: var(--ink-2);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px 28px;
+  margin-top: 28px;
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field > span,
+.field > legend {
+  padding: 0;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+}
+
+select,
+input:not([type="radio"]),
+button {
+  height: 38px;
+  border: 1px solid var(--axis);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+select,
+input:not([type="radio"]) {
+  width: 15rem;
+  max-width: 100%;
+  padding: 0 10px;
+}
+
+button {
+  padding: 0 14px;
+  border-color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+button:disabled {
+  border-color: var(--axis);
+  color: var(--ink-2);
+  cursor: progress;
+}
+
+.track {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.segmented {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--axis);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.segmented input {
+  position: absolute;
+  opacity: 0;
+}
+
+.segmented span {
+  display: block;
+  padding: 0 14px;
+  line-height: 36px;
+  cursor: pointer;
+}
+
+.segmented input:checked + span {
+  background: var(--ink);
+  color: var(--page);
+}
+
+.segmented input:focus-visible + span {
+  outline: 2px solid var(--ink);
+  outline-offset: -4px;
+}
+
+.segmented input:checked:focus-visible + span {
+  outline-color: var(--page);
+}
+
+.notice {
+  max-width: 80ch;
+  min-height: 1.5em;
+  margin: 20px 0 0;
+}
+
+/* The two columns */
+
+.view {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: start;
+  gap: clamp(24px, 4vw, 64px);
+  padding: 12px var(--gutter) 24px;
+}
+
+.reading {
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  padding: 12px 12px 32px 0;
+  overflow-y: auto;
+}
+
+.record {
+  padding: clamp(16px, 2.4vw, 32px);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--surface);
+  transition: opacity 0.15s;
+  container-type: inline-size;
+}
+
+.record.stale {
+  opacity: 0.5;
+}
+
+@media (max-width: 960px) {
+  .view {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reading {
+    position: static;
+    max-height: none;
+    padding-right: 0;
+  }
+}
+
+/* What the model wrote */
+
+.reading > p:first-child {
+  max-width: 56ch;
+  margin: 0 0 16px;
+}
+
+#explain {
+  background: var(--ink);
+  color: var(--page);
+}
+
+#explain:disabled {
+  background: none;
+  color: var(--ink-2);
+}
+
+.error {
+  margin: 12px 0 0;
+  color: var(--bad);
+}
+
+.headline {
+  margin: 0 0 16px;
+  font-size: clamp(1.6rem, 1.1rem + 1.4vw, 2.3rem);
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.summary {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+
+.finding {
+  margin-top: 28px;
+}
+
+.finding h3 {
+  margin: 0 0 4px;
+  font-size: 1.125rem;
+}
+
+.reading p.model,
+.reading ul.model {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+.reading ul.model {
+  padding-left: 1.2em;
+}
+
+.label {
+  margin: 28px 0 6px;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.hypothesis {
+  margin-top: 40px;
+  padding-left: 18px;
+  border-left: 3px solid var(--ink);
+}
+
+.hypothesis .label:first-child {
+  margin-top: 0;
+}
+
+.reading p.statement {
+  margin-bottom: 8px;
+  font-size: 1.3rem;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.aside {
+  margin: 8px 0 0;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
+.evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.evidence button {
+  height: auto;
+  padding: 3px 8px;
+  border-color: var(--rule);
+  border-radius: 3px;
+  color: var(--ink-2);
+  font-size: 0.78rem;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.evidence strong {
+  color: var(--ink);
+}
+
+.evidence button:hover,
+.evidence button:focus-visible {
+  border-color: var(--ink);
+  background: var(--cited);
+  color: var(--ink);
+}
+
+.confidence-score {
+  margin: 0 0 8px;
+  color: var(--ink-2);
+}
+
+.confidence-score strong {
+  color: var(--ink);
+  font-size: 1.75rem;
+  line-height: 1.1;
+}
+
+/* Filled to the score; the tick marks the most this data can support. */
+.confidence-meter {
+  position: relative;
+  max-width: 22rem;
+  height: 8px;
+  margin-bottom: 14px;
+  border-radius: 4px;
+  background: var(--rule);
+}
+
+.confidence-meter span {
+  display: block;
+  width: calc(var(--score) * 100%);
+  height: 100%;
+  border-radius: 4px;
+  background: var(--ink);
+}
+
+.confidence-meter i {
+  position: absolute;
+  top: -4px;
+  left: calc(var(--ceiling) * 100% - 1px);
+  width: 2px;
+  height: 16px;
+  background: var(--ink-2);
+}
+
+.provenance {
+  margin-top: 36px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+  font-size: 0.875rem;
+}
+
+.provenance p {
+  margin: 0 0 4px;
+}
+
+.provenance ul {
+  margin: 4px 0;
+  padding-left: 1.2em;
+}
+
+.status {
+  font-weight: 600;
+}
+
+.good {
+  color: var(--good);
+}
+
+.bad {
+  color: var(--bad);
+}
+
+/* The numbers */
+
+.period {
+  margin: 0 0 24px;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
+.empty {
+  margin: 0;
+}
+
+/* The number, or the thing, that a piece of evidence points to. */
+.cited {
+  border-radius: 2px;
+  background: var(--cited);
+  box-shadow: 0 0 0 3px var(--cited);
+  color: var(--ink);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px 24px;
+}
+
+/* Four in a row or two by two, never three and an orphan. */
+@container (max-width: 600px) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.tile p {
+  margin: 0;
+}
+
+.tile-label,
+.tile-delta {
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+}
+
+.tile-value {
+  width: fit-content;
+  margin: 2px 0;
+  font-size: 1.9rem;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.tile-delta.good,
+.tile-delta.bad {
+  font-weight: 600;
+}
+
+.tile-delta.good {
+  color: var(--good);
+}
+
+.tile-delta.bad {
+  color: var(--bad);
+}
+
+.tile-delta span {
+  color: var(--ink-2);
+  font-weight: 400;
+}
+
+.block {
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.block h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.note {
+  margin: 2px 0 14px;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
+.block h3 + .scroll {
+  margin-top: 10px;
+}
+
+.quiet {
+  color: var(--ink-2);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0 0 12px;
+  padding: 0;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  list-style: none;
+}
+
+.key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 2px;
+}
+
+.legend.lines .key,
+.tip .key {
+  width: 14px;
+  height: 3px;
+  vertical-align: middle;
+}
+
+.key-wait,
+.fill-wait {
+  background: var(--wait);
+  fill: var(--wait);
+}
+
+.key-whole,
+.fill-whole {
+  background: var(--whole);
+  fill: var(--whole);
+}
+
+.key-review,
+.fill-review {
+  background: var(--review);
+  fill: var(--review);
+}
+
+.key-quiet,
+.fill-quiet {
+  background: var(--quiet);
+  fill: var(--quiet);
+}
+
+.meter-row {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr) 3.5rem;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 0.875rem;
+}
+
+.meter-row strong {
+  width: fit-content;
+}
+
+/* The track is a lighter step of the fill, so the whole bar reads as one quantity. */
+.meter {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--wait) 22%, var(--surface));
+}
+
+.meter-fill {
+  display: block;
+  width: calc(var(--share) * 100%);
+  height: 100%;
+  border-radius: 6px;
+  background: var(--wait);
+}
+
+.trend {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.trend text {
+  fill: var(--ink-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend .end-label {
+  fill: var(--ink);
+  font-weight: 600;
+}
+
+.grid {
+  stroke: var(--rule);
+}
+
+.axis {
+  stroke: var(--axis);
+}
+
+.crosshair {
+  stroke: var(--ink-2);
+}
+
+.line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.stroke-whole {
+  stroke: var(--whole);
+}
+
+.stroke-wait {
+  stroke: var(--wait);
+}
+
+/* A ring in the surface colour keeps a dot legible where it sits on a line. */
+.dot {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+/* Only the week bands take the pointer, so a tooltip survives passing over a dot or a line. */
+.trend :not(.week) {
+  pointer-events: none;
+}
+
+.week {
+  fill: transparent;
+  outline: none;
+}
+
+.week:focus-visible {
+  fill: color-mix(in oklab, var(--ink) 7%, transparent);
+}
+
+.trend .cited {
+  stroke: var(--cited);
+  stroke-width: 7;
+  paint-order: stroke;
+}
+
+.trend .week.cited {
+  fill: color-mix(in oklab, var(--cited) 45%, transparent);
+  stroke: none;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 10rem) minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 7px 0;
+}
+
+/* Too narrow for names beside bars: the bars go under the name and keep their length. */
+@container (max-width: 480px) {
+  .bar-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}
+
+.bar-name {
+  margin: 0;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.bar-name strong {
+  font-weight: 600;
+}
+
+.bar-name span {
+  display: block;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+}
+
+.bar-name span[data-fact] {
+  width: fit-content;
+}
+
+.bars {
+  display: grid;
+  gap: 4px;
+}
+
+.bar-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Square at the baseline, rounded at the end that carries the value. */
+.bar {
+  flex: none;
+  width: calc((100% - 9rem) * var(--share));
+  min-width: 2px;
+  height: 10px;
+  border-radius: 0 4px 4px 0;
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+th,
+td {
+  padding: 7px 16px 7px 0;
+  border-bottom: 1px solid var(--rule);
+  font-weight: 400;
+  text-align: left;
+}
+
+th:last-child,
+td:last-child {
+  padding-right: 0;
+}
+
+thead th {
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* A narrow table scrolls sideways before long row names are squeezed into a column of words. */
+.wide {
+  min-width: 9.5rem;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+details {
+  margin-top: 10px;
+}
+
+summary {
+  width: fit-content;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.tip {
+  position: fixed;
+  z-index: 10;
+  max-width: 280px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--ink);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+  color: var(--page);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  pointer-events: none;
+}
+
+.tip p {
+  margin: 0;
+}
+
+.tip-title {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.colophon {
+  display: flex;
+  gap: 20px;
+  padding: 32px var(--gutter) 40px;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .record {
+    transition: none;
+  }
+}

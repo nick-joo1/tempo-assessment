@@ -496,4 +496,14 @@ describe('the application', () => {
       '/v1/repos/{owner}/{name}/insights/review-flow/narrative',
     ]);
   });
+
+  it('serves the UI under a policy that allows nothing but its own files', async () => {
+    const page = await get('/');
+
+    expect(page.statusCode).toBe(200);
+    expect(page.headers['content-type']).toContain('text/html');
+    expect(page.headers['content-security-policy']).toContain("default-src 'none'");
+    expect(page.headers['content-security-policy']).toContain("script-src 'self'");
+    expect(page.body).not.toMatch(/<script(?![^>]*\bsrc=)|\bstyle=|<style/);
+  });
 });
