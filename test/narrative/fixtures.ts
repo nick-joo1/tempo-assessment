@@ -2,6 +2,7 @@ import type { MergedPullRequest } from '../../src/domain.js';
 import { resolvePeriod } from '../../src/insights/period.js';
 import { computeReviewFlow } from '../../src/insights/review-flow.js';
 import type { ReviewFlowInsight } from '../../src/insights/schema.js';
+import type { NarrativeModel } from '../../src/narrative/model.js';
 import type { NarrativeDraft } from '../../src/narrative/schema.js';
 import { pullRequest, review } from '../helpers.js';
 
@@ -41,29 +42,34 @@ function batch(options: {
  * Three weeks in which review slowed down against the three weeks before:
  * 21 pull requests in each, cycle time 30.5h (was 12h), wait for first review 26.5h (was 4h).
  */
+export function slowdownPullRequests(): MergedPullRequest[] {
+  return [
+    ...batch({
+      firstNumber: 100,
+      count: 21,
+      firstDay: '2026-09-24',
+      cycleHours: 12,
+      waitHours: 4,
+      reviewer: 'carol',
+    }),
+    ...batch({
+      firstNumber: 200,
+      count: 21,
+      firstDay: '2026-10-15',
+      cycleHours: 30.5,
+      waitHours: 26.5,
+      reviewer: 'bob',
+    }),
+  ];
+}
+
+/** The slowdown as an insight over its second three weeks, 2026-10-15 to 2026-11-04. */
 export function slowdownInsight(): ReviewFlowInsight {
   return computeReviewFlow({
     repository: 'acme/widgets',
     period: resolvePeriod({ from: '2026-10-15', to: '2026-11-04' }, NOW),
     baselineCovered: true,
-    pullRequests: [
-      ...batch({
-        firstNumber: 100,
-        count: 21,
-        firstDay: '2026-09-24',
-        cycleHours: 12,
-        waitHours: 4,
-        reviewer: 'carol',
-      }),
-      ...batch({
-        firstNumber: 200,
-        count: 21,
-        firstDay: '2026-10-15',
-        cycleHours: 30.5,
-        waitHours: 26.5,
-        reviewer: 'bob',
-      }),
-    ],
+    pullRequests: slowdownPullRequests(),
     dataAsOf: NOW,
   });
 }
@@ -106,4 +112,24 @@ export function soundDraft(overrides: Partial<NarrativeDraft> = {}): NarrativeDr
     caveats: [],
     ...overrides,
   };
+}
+
+/** A model that answers with the given drafts or failures, in order. */
+export class ScriptedModel implements NarrativeModel {
+  readonly id = 'test-model';
+  readonly fingerprint = 'test-model/medium';
+  readonly prompts: { system: string; user: string }[] = [];
+  readonly #answers: (NarrativeDraft | Error | Promise<NarrativeDraft>)[];
+
+  constructor(...answers: (NarrativeDraft | Error | Promise<NarrativeDraft>)[]) {
+    this.#answers = answers;
+  }
+
+  async draft(prompt: { system: string; user: string }): Promise<NarrativeDraft> {
+    this.prompts.push(prompt);
+    const answer = this.#answers.shift();
+    if (!answer) throw new Error('The test did not expect another model call');
+    if (answer instanceof Error) throw answer;
+    return answer;
+  }
 }

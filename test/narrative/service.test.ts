@@ -10,29 +10,9 @@ import { openDatabase } from '../../src/store/database.js';
 import { NarrativeCache } from '../../src/store/narratives.js';
 import { RepoStore } from '../../src/store/repos.js';
 import { pullRequest } from '../helpers.js';
-import { slowdownInsight, soundDraft } from './fixtures.js';
+import { ScriptedModel, slowdownInsight, soundDraft } from './fixtures.js';
 
 const NOW = new Date('2026-11-11T09:00:00Z');
-
-/** A model that answers with the given drafts or failures, in order. */
-class ScriptedModel implements NarrativeModel {
-  readonly id = 'test-model';
-  readonly fingerprint = 'test-model/medium';
-  readonly prompts: { system: string; user: string }[] = [];
-  readonly #answers: (NarrativeDraft | Error | Promise<NarrativeDraft>)[];
-
-  constructor(...answers: (NarrativeDraft | Error | Promise<NarrativeDraft>)[]) {
-    this.#answers = answers;
-  }
-
-  async draft(prompt: { system: string; user: string }): Promise<NarrativeDraft> {
-    this.prompts.push(prompt);
-    const answer = this.#answers.shift();
-    if (!answer) throw new Error('The test did not expect another model call');
-    if (answer instanceof Error) throw answer;
-    return answer;
-  }
-}
 
 const unbacked = () => soundDraft({ summary: 'Review throughput fell by 37% over the period.' });
 
