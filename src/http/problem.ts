@@ -100,12 +100,8 @@ function gitHubProblem(error: GitHubError): Problem {
         { headers: { 'retry-after': secondsUntil(error.retryAt) } },
       );
     default:
-      return new Problem(
-        502,
-        'github_unavailable',
-        'GitHub request failed',
-        'The server could not get a usable answer from GitHub.',
-      );
+      // The client wrote these messages itself; they name the failure, never its payload.
+      return new Problem(502, 'github_unavailable', 'GitHub request failed', error.message);
   }
 }
 

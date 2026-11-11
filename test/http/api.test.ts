@@ -242,6 +242,14 @@ describe('tracking a repository', () => {
     expect(Number(response.headers['retry-after'])).toBeGreaterThan(100);
   });
 
+  it('says what went wrong with GitHub, in words the server chose', async () => {
+    github.lookupFailure = new GitHubError('unauthorized', 'GitHub rejected the configured token');
+
+    const failed = problem(await put(WIDGETS), 502, 'github_unavailable');
+
+    expect(failed.detail).toBe('GitHub rejected the configured token');
+  });
+
   it('forgets a repository and everything stored for it on DELETE', async () => {
     await track();
 
