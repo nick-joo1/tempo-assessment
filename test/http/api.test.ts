@@ -71,9 +71,14 @@ let github: FakeGitHub;
 let sync: SyncService;
 let app: FastifyInstance;
 
-/** Builds the real application over an in-memory database, with GitHub and the model faked. */
+type LogLine = Record<string, unknown>;
+
+/**
+ * Builds the real application over an in-memory database, with GitHub and the model faked.
+ * With `logs`, the application logs requests and every line is appended to it.
+ */
 async function start(
-  options: { model?: NarrativeModel | null; maxTrackedRepos?: number } = {},
+  options: { model?: NarrativeModel | null; maxTrackedRepos?: number; logs?: LogLine[] } = {},
 ): Promise<void> {
   const logger = pino({ level: 'silent' });
   const clock = () => NOW;
@@ -97,6 +102,9 @@ async function start(
     clock,
     maxTrackedRepos: options.maxTrackedRepos ?? 5,
     allowPrivateRepos: false,
+    logger:
+      options.logs &&
+      pino({ level: 'info' }, { write: (line: string) => options.logs?.push(JSON.parse(line)) }),
   });
 }
 
@@ -478,6 +486,29 @@ describe('the application', () => {
     const failed = problem(await put(WIDGETS), 500, 'internal_error');
 
     expect(failed.detail).not.toContain('10.0.0.7');
+  });
+
+  it('logs a failure it anticipated as a warning, and only a bug as an error', async () => {
+    const logs: LogLine[] = [];
+    await app.close();
+    await start({ logs });
+    await track();
+
+    await get(`${WIDGETS}/insights/review-flow/narrative?${SLOWDOWN}`);
+    github.lookupFailure = new Error('connect ECONNREFUSED 10.0.0.7:5432');
+    await put('/v1/repos/acme/gadgets');
+
+    expect(logs.filter((line) => line.msg === 'request failed')).toEqual([
+      expect.objectContaining({
+        level: 40,
+        code: 'narrative_not_configured',
+        reason: 'No language model is configured',
+      }),
+      expect.objectContaining({
+        level: 50,
+        err: expect.objectContaining({ message: 'connect ECONNREFUSED 10.0.0.7:5432' }),
+      }),
+    ]);
   });
 
   it('issues its own request ids, ignoring any the client sends', async () => {

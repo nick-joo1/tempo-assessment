@@ -280,6 +280,8 @@ fails and names the variable without printing its value.
   boundary and closes the database. After ten seconds it exits regardless.
 - Logs are structured (pino, JSON lines in production): every request with its request id,
   every sync with its duration, every model call with its duration and token counts.
+  Upstream failures (GitHub, the model) are warnings; errors are failures of the service
+  itself.
 - Schema changes are forward-only migrations applied at startup.
 
 ## Security

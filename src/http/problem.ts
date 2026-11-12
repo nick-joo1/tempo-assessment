@@ -130,8 +130,16 @@ function secondsUntil(instant: Date | undefined): string {
 
 export function sendProblem(error: unknown, request: FastifyRequest, reply: FastifyReply): void {
   const problem = toProblem(error);
-  if (problem.status >= 500) request.log.error({ err: error }, 'request failed');
-  else request.log.info({ code: problem.code }, 'request rejected');
+  // Only a failure nobody anticipated is an error, and only that one needs its stack. An
+  // upstream outage or a missing model key has a deliberate response and names its own cause.
+  if (problem.code === 'internal_error') {
+    request.log.error({ err: error }, 'request failed');
+  } else if (problem.status >= 500) {
+    const reason = error instanceof Error ? error.message : String(error);
+    request.log.warn({ code: problem.code, reason }, 'request failed');
+  } else {
+    request.log.info({ code: problem.code }, 'request rejected');
+  }
 
   void reply
     .code(problem.status)
