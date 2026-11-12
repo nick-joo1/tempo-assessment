@@ -1,0 +1,20 @@
+services:
+  review-flow:
+    build: .
+    # GITHUB_TOKEN and, for narratives, ANTHROPIC_API_KEY. See .env.example.
+    env_file: .env
+    environment:
+      # Inside the container the service must listen on every interface and keep its
+      # database on the volume, whatever .env says for running on the host.
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATABASE_PATH: /data/review-flow.db
+    ports:
+      # Published on loopback only: the API has no authentication.
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - review-flow-data:/data
+    restart: unless-stopped
+
+volumes:
+  review-flow-data:
