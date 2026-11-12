@@ -119,11 +119,15 @@ computed in code.
   without a model key.
 - The three GraphQL documents the service sends, validated against GitHub's published
   schema.
+- A first and an incremental sync of `fastify/fastify` against the real GitHub API: 165
+  merged pull requests over 180 days in about 25 seconds, then one changed pull request in
+  under 4 seconds. The merged pull request counts for the default period, its baseline and
+  the whole window, and the number of distinct authors, match GitHub's search.
 - The eval runner, against a local stand-in for the model API.
 
-Not run: a sync against the real GitHub API, a real model call, the evals against a real
-model, and the Docker image build. The machine this was built on had no credentials and no
-Docker. The narrative example in the README says which of its parts are real output.
+Not run: a real model call, the evals against a real model, and the Docker image build. The
+machine this was built on had no model key and no Docker. The narrative example in the
+README says which of its parts are real output.
 
 ## Known limits
 
